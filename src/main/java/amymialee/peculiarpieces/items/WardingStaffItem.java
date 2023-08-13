@@ -19,14 +19,18 @@ public class WardingStaffItem extends Item {
     public ActionResult useOnBlock(ItemUsageContext context) {
         if (context.getPlayer() != null && context.getPlayer().isCreative()) {
             var world = context.getWorld();
-            var pos = context.getBlockPos();
-            var component = PeculiarComponentInitializer.WARDING.maybeGet(world.getChunk(pos));
-            if (component.isPresent()) {
-                var wardingComponent = component.get();
-                wardingComponent.setWard(pos, !wardingComponent.getWard(pos));
+            if (!world.isClient) {
+                var pos = context.getBlockPos();
+                var chunk = world.getChunk(pos);
+                var component = PeculiarComponentInitializer.WARDING.maybeGet(chunk);
+                if (component.isPresent()) {
+                    var wardingComponent = component.get();
+                    wardingComponent.setWard(pos, !wardingComponent.getWard(pos));
+                    PeculiarComponentInitializer.WARDING.sync(chunk);
+                }
             }
             return ActionResult.success(world.isClient);
         }
         return super.useOnBlock(context);
     }
-}
+} 
