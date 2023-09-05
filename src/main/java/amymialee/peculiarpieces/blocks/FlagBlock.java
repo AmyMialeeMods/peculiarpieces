@@ -240,6 +240,7 @@ public class FlagBlock extends BlockWithEntity implements CustomCreativeItems {
         NB("nb"),
         ARO("aro"),
         ACE("ace"),
+        AGENDER("agender"),
         DEMISEXUAL("demisexual"),
         INTER("inter"),
         TEMPLATE("template"),

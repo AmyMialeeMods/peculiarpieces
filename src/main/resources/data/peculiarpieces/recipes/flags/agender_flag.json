@@ -1,0 +1,26 @@
+{
+  "type": "peculiarpieces:nbt_crafting_shapeless",
+  "ingredients": [
+    {
+      "item": "minecraft:black_dye"
+    },
+    {
+      "item": "minecraft:gray_dye"
+    },
+    {
+      "item": "minecraft:lime_dye"
+    },
+    {
+      "item": "peculiarpieces:flag"
+    }
+  ],
+  "result": {
+    "item": "peculiarpieces:flag",
+    "data": {
+        "BlockEntityTag": {
+            "Texture": "agender",
+            "id": "minecraft:flag"
+        }
+    }
+  }
+}
