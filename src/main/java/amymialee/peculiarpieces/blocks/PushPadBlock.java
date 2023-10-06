@@ -60,7 +60,7 @@ public class PushPadBlock extends AbstractFlatBlock implements CustomCreativeIte
 
     @Override
     public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
-        if (!state.get(POWERED)) {
+        if (!state.get(POWERED) && entity.isOnGround()) {
             var direction = state.get(FACING);
             if (!(direction == null)) {
                 double power = (state.get(POWER) + 1) * 0.65f;
