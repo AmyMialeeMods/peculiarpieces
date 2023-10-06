@@ -3,8 +3,7 @@ package amymialee.peculiarpieces.mixin;
 import amymialee.peculiarpieces.PeculiarPieces;
 import amymialee.peculiarpieces.registry.PeculiarItems;
 import amymialee.peculiarpieces.util.ExtraPlayerDataWrapper;
-import dev.emi.trinkets.api.SlotReference;
-import dev.emi.trinkets.api.TrinketComponent;
+import amymialee.peculiarpieces.util.JumpPaddableEntity;
 import dev.emi.trinkets.api.TrinketsApi;
 import net.minecraft.advancement.criterion.Criteria;
 import net.minecraft.block.BlockState;
@@ -20,15 +19,12 @@ import net.minecraft.entity.effect.StatusEffectInstance;
 import net.minecraft.entity.effect.StatusEffects;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemStack;
-import net.minecraft.registry.tag.DamageTypeTags;
 import net.minecraft.server.network.ServerPlayerEntity;
 import net.minecraft.sound.SoundEvent;
 import net.minecraft.stat.Stats;
 import net.minecraft.util.Hand;
-import net.minecraft.util.Pair;
 import net.minecraft.util.UseAction;
 import net.minecraft.util.math.BlockPos;
-import net.minecraft.util.math.MathHelper;
 import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 import org.spongepowered.asm.mixin.Mixin;
@@ -40,12 +36,9 @@ import org.spongepowered.asm.mixin.injection.ModifyVariable;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
-import java.util.List;
-import java.util.Optional;
-
 @SuppressWarnings("ConstantConditions")
 @Mixin(LivingEntity.class)
-public abstract class LivingEntityMixin extends Entity {
+public abstract class LivingEntityMixin extends Entity implements JumpPaddableEntity {
     public LivingEntityMixin(EntityType<?> type, World world) {
         super(type, world);
     }
@@ -59,6 +52,11 @@ public abstract class LivingEntityMixin extends Entity {
     @Shadow public abstract boolean hasStatusEffect(StatusEffect effect);
 
     @Shadow public abstract ItemStack getStackInHand(Hand hand);
+
+    @Unique
+    private Vec3d PeculiarPieces$lastJumpPadPos;
+    @Unique
+    private boolean PeculiarPieces$jumpOnPad = true;
 
     @Inject(method = "fall", at = @At("HEAD"))
     public void PeculiarPieces$FallHead(double heightDifference, boolean onGround, BlockState state, BlockPos landedPosition, CallbackInfo ci) {
@@ -190,5 +188,29 @@ public abstract class LivingEntityMixin extends Entity {
         this.addStatusEffect(new StatusEffectInstance(StatusEffects.ABSORPTION, 100, 1));
         this.addStatusEffect(new StatusEffectInstance(StatusEffects.FIRE_RESISTANCE, 800, 0));
         this.getWorld().sendEntityStatus(this, EntityStatuses.USE_TOTEM_OF_UNDYING);
+    }
+
+    @Inject(at = @At("TAIL"), method = "tick")
+    public void PeculiarPieces$endTick(CallbackInfo ci) {
+        // If the entity can't use the jump pad and is greater than 1 block away from their original position
+        // Adds in the radius of the entity's largest side to avoid some level of double jumps
+        if (!this.canJumpOnPad() && this.isOnGround() && this.getPos().squaredDistanceTo(this.PeculiarPieces$lastJumpPadPos) > Math.pow(1 + Math.max(this.getBoundingBox().getZLength(), this.getBoundingBox().getXLength()) / 2, 2)) {
+            this.PeculiarPieces$lastJumpPadPos = null;
+            this.setJumpOnPad(true);
+        }
+    }
+
+    @Override
+    public void setJumpOnPad(boolean jumpOnPad) {
+        this.PeculiarPieces$jumpOnPad = jumpOnPad;
+
+        if (!this.canJumpOnPad()) {
+            this.PeculiarPieces$lastJumpPadPos = this.getPos();
+        }
+    }
+
+    @Override
+    public boolean canJumpOnPad() {
+        return this.PeculiarPieces$jumpOnPad;
     }
 }

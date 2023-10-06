@@ -2,9 +2,11 @@ package amymialee.peculiarpieces.blocks;
 
 import amymialee.peculiarpieces.CustomCreativeItems;
 import amymialee.peculiarpieces.callbacks.PlayerJumpConsumingBlock;
+import amymialee.peculiarpieces.util.JumpPaddableEntity;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.entity.Entity;
+import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.ItemPlacementContext;
 import net.minecraft.item.ItemStack;
@@ -20,7 +22,6 @@ import net.minecraft.util.Hand;
 import net.minecraft.util.hit.BlockHitResult;
 import net.minecraft.util.math.BlockPos;
 import net.minecraft.util.math.MathHelper;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.BlockView;
 import net.minecraft.world.World;
 import org.jetbrains.annotations.Nullable;
@@ -54,20 +55,34 @@ public class JumpPadBlock extends AbstractFlatBlock implements PlayerJumpConsumi
     @Override
     public void onLandedUpon(World world, BlockState state, BlockPos pos, Entity entity, float fallDistance) {}
 
-    @Override
-    public void onJump(BlockState state, World world, BlockPos pos, PlayerEntity player) {
+    private void applyJump(BlockState state, LivingEntity entity) {
         if (state.get(POWERED)) {
             return;
         }
         var power = state.get(POWER) + 1;
-        double d = (0.42f * power) + player.getJumpBoostVelocityModifier();
-        var vec3d = player.getVelocity();
-        player.setVelocity(vec3d.x, vec3d.y + d, vec3d.z);
-        if (player.isSprinting()) {
-            var f = player.getYaw() * ((float)Math.PI / 180);
-            player.setVelocity(player.getVelocity().add(-MathHelper.sin(f) * 0.2f * power, 0.0, MathHelper.cos(f) * 0.2f * power));
+        double d = (0.42f * power) + entity.getJumpBoostVelocityModifier();
+        var vec3d = entity.getVelocity();
+        entity.setVelocity(vec3d.x, vec3d.y + d, vec3d.z);
+        if (entity.isSprinting()) {
+            var f = entity.getYaw() * ((float)Math.PI / 180);
+            entity.setVelocity(entity.getVelocity().add(-MathHelper.sin(f) * 0.2f * power, 0.0, MathHelper.cos(f) * 0.2f * power));
         }
-        player.velocityModified = true;
+        entity.velocityModified = true;
+    }
+
+    @Override
+    public void onJump(BlockState state, World world, BlockPos pos, PlayerEntity player) {
+        applyJump(state, player);
+    }
+
+    @Override
+    public void onEntityCollision(BlockState state, World world, BlockPos pos, Entity entity) {
+        // Don't apply jump to player since that is handled through #onJump
+        if (entity.isOnGround() && entity instanceof LivingEntity living && !(living instanceof PlayerEntity) && ((JumpPaddableEntity) living).canJumpOnPad()) {
+            ((JumpPaddableEntity) living).setJumpOnPad(false);
+            applyJump(state, living);
+        }
+        super.onEntityCollision(state, world, pos, entity);
     }
 
     @Override
