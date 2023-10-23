@@ -5,10 +5,8 @@ import net.minecraft.entity.LivingEntity;
 import net.minecraft.entity.player.PlayerEntity;
 import net.minecraft.item.Item;
 import net.minecraft.item.ItemStack;
-import net.minecraft.nbt.NbtCompound;
 import net.minecraft.util.Hand;
 import net.minecraft.util.TypedActionResult;
-import net.minecraft.util.math.Vec3d;
 import net.minecraft.world.World;
 
 public class GliderItem extends Item {
@@ -19,7 +17,7 @@ public class GliderItem extends Item {
     @Override
     public TypedActionResult<ItemStack> use(World world, PlayerEntity user, Hand hand) {
         var stack = user.getStackInHand(hand);
-        this.toggle(stack);
+        if (!stack.isEmpty()) this.toggle(stack);
         return TypedActionResult.success(stack);
     }
 
@@ -30,11 +28,11 @@ public class GliderItem extends Item {
 
     public static boolean hasGlider(LivingEntity player) {
         var main = player.getMainHandStack();
-        if (main.getNbt() != null && main.getNbt().getBoolean("pp:gliding")) {
+        if (isActive(main)) {
             return true;
         }
         var off = player.getOffHandStack();
-        return off.getNbt() != null && off.getNbt().getBoolean("pp:gliding");
+        return isActive(off);
     }
 
     public static ItemStack getGlider(LivingEntity player) {
@@ -54,7 +52,7 @@ public class GliderItem extends Item {
     }
 
     public static boolean isActive(ItemStack stack) {
-        return stack.getNbt() != null && stack.getNbt().getBoolean("pp:gliding");
+        return !stack.isEmpty() && stack.getNbt() != null && stack.getNbt().getBoolean("pp:gliding");
     }
 
     public static boolean isGliding(LivingEntity player) {
