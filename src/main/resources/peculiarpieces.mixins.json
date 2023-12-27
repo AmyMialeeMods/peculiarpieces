@@ -39,9 +39,6 @@
     "StatusEffectInstanceAccessor",
     "RedstoneViewMixin"
   ],
-  "injectors": {
-    "defaultRequire": 1
-  },
   "client": [
     "CapeFeatureRendererMixin",
     "ClientPlayNetworkHandlerMixin",
@@ -53,5 +50,8 @@
     "PlayerEntityModelMixin",
     "PlayerEntityRendererMixin",
     "PlayerHeldItemFeatureRendererMixin"
-  ]
+  ],
+  "injectors": {
+    "defaultRequire": 1
+  }
 }

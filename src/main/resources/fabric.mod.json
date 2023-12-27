@@ -30,7 +30,7 @@
     "peculiarpieces.mixins.json"
   ],
   "depends": {
-    "fabric": "*",
+    "fabric-api": "*",
     "trinkets": "*"
   },
   "custom": {
