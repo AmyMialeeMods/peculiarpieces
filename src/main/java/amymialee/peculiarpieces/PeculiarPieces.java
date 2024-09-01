@@ -31,6 +31,9 @@ import amymialee.peculiarpieces.util.WarpManager;
 import com.mojang.brigadier.arguments.BoolArgumentType;
 import com.mojang.brigadier.arguments.IntegerArgumentType;
 import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+import com.mojang.brigadier.exceptions.CommandSyntaxException;
+
 import net.fabricmc.api.ModInitializer;
 import net.fabricmc.fabric.api.command.v2.CommandRegistrationCallback;
 import net.fabricmc.fabric.api.event.lifecycle.v1.ServerTickEvents;
@@ -42,6 +45,7 @@ import net.fabricmc.fabric.api.screenhandler.v1.ScreenHandlerRegistry;
 import net.minecraft.block.Block;
 import net.minecraft.block.BlockState;
 import net.minecraft.command.argument.BlockPosArgumentType;
+import net.minecraft.command.argument.BlockStateArgumentType;
 import net.minecraft.command.argument.EntityArgumentType;
 import net.minecraft.command.argument.Vec3ArgumentType;
 import net.minecraft.entity.Entity;
@@ -84,7 +88,9 @@ import net.minecraft.world.GameMode;
 import net.minecraft.world.GameRules;
 import net.minecraft.world.chunk.Chunk;
 
+import java.util.ArrayList;
 import java.util.Collection;
+import java.util.HashSet;
 import java.util.Optional;
 
 @SuppressWarnings("unused")
@@ -214,33 +220,12 @@ public class PeculiarPieces implements ModInitializer {
                                     .then(CommandManager.argument("from", BlockPosArgumentType.blockPos())
                                             .then(CommandManager.argument("to", BlockPosArgumentType.blockPos())
                                                     .executes(context -> {
-                                                        var range = BlockBox.create(BlockPosArgumentType.getLoadedBlockPos(context, "from"), BlockPosArgumentType.getLoadedBlockPos(context, "to"));
-                                                        var source = context.getSource();
-                                                        var i = range.getBlockCountX() * range.getBlockCountY() * range.getBlockCountZ();
-                                                        if (i > 32768 * 8) {
-                                                            source.sendFeedback(() -> Text.translatable("commands.fill.toobig", 32768 * 8, i), false);
-                                                            return 0;
-                                                        }
-                                                        var serverWorld = source.getWorld();
-                                                        var j = 0;
-                                                        var ward = BoolArgumentType.getBool(context, "set");
-                                                        for (var blockPos : BlockPos.iterate(range.getMinX(), range.getMinY(), range.getMinZ(), range.getMaxX(), range.getMaxY(), range.getMaxZ())) {
-                                                            if (ward && serverWorld.getBlockState(blockPos).isAir()) {
-                                                                continue;
-                                                            }
-                                                            var chunk = serverWorld.getChunk(blockPos);
-                                                            var component = PeculiarComponentInitializer.WARDING.maybeGet(chunk);
-                                                            if (component.isPresent()) {
-                                                                var wardingComponent = component.get();
-                                                                wardingComponent.setWard(blockPos, ward);
-                                                                PeculiarComponentInitializer.WARDING.sync(chunk);
-                                                                j++;
-                                                            }
-                                                        }
-                                                        final var fj = j;
-                                                        source.sendFeedback(() -> Text.translatable("peculiar.commands.wardarea.success", ward ? "Warded" : "Unwarded", fj), true);
-                                                        return j;
-                                                    })))));
+                                                        return ward(context, null);
+                                                    })
+                                                    .then(CommandManager.argument("filter", BlockStateArgumentType.blockState(access))
+                                                            .executes(context -> {
+                                                                return ward(context, BlockStateArgumentType.getBlockState(context, "filter").getBlockState());
+                                                            }))))));
             literalArgumentBuilder
                     .then(CommandManager.literal("ward")
                             .then(CommandManager.argument("set", BoolArgumentType.bool())
@@ -307,6 +292,41 @@ public class PeculiarPieces implements ModInitializer {
                 }
             }
         });
+    }
+
+    private int ward(CommandContext<ServerCommandSource> context, BlockState filter) throws CommandSyntaxException {
+        var range = BlockBox.create(BlockPosArgumentType.getLoadedBlockPos(context, "from"), BlockPosArgumentType.getLoadedBlockPos(context, "to"));
+        var source = context.getSource();
+        var i = range.getBlockCountX() * range.getBlockCountY() * range.getBlockCountZ();
+        if (i > 32768 * 8) {
+            source.sendFeedback(() -> Text.translatable("commands.fill.toobig", 32768 * 8, i), false);
+            return 0;
+        }
+        var serverWorld = source.getWorld();
+        var j = 0;
+        var ward = BoolArgumentType.getBool(context, "set");
+        var chunks = new HashSet<Chunk>();
+        for (var blockPos : BlockPos.iterate(range.getMinX(), range.getMinY(), range.getMinZ(), range.getMaxX(), range.getMaxY(), range.getMaxZ())) {
+            var bs = serverWorld.getBlockState(blockPos);
+            if (ward && bs.isAir()) {
+                continue;
+            }
+            if (filter != null && bs != filter) continue;
+            var chunk = serverWorld.getChunk(blockPos);
+            var component = PeculiarComponentInitializer.WARDING.maybeGet(chunk);
+            if (component.isPresent()) {
+                var wardingComponent = component.get();
+                wardingComponent.setWard(blockPos, ward);
+                chunks.add(chunk);
+                j++;
+            }
+        }
+        for (var c : chunks) {
+            PeculiarComponentInitializer.WARDING.sync(c);
+        }
+        final var fj = j;
+        source.sendFeedback(() -> Text.translatable("peculiar.commands.wardarea.success", ward ? "Warded" : "Unwarded", fj), true);
+        return j;
     }
 
     public static Identifier id(String path) {
